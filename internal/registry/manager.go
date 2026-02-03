@@ -2,6 +2,8 @@ package registry
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/justchokingaround/greg/internal/config"
@@ -9,6 +11,7 @@ import (
 	"github.com/justchokingaround/greg/internal/providers/anime/allanime"
 	"github.com/justchokingaround/greg/internal/providers/anime/hdrezka"
 	"github.com/justchokingaround/greg/internal/providers/anime/hianime"
+	"github.com/justchokingaround/greg/internal/providers/luaprovider"
 	"github.com/justchokingaround/greg/internal/providers/manga/comix"
 	"github.com/justchokingaround/greg/internal/providers/movies/flixhq"
 	hdrezkamovie "github.com/justchokingaround/greg/internal/providers/movies/hdrezka"
@@ -61,6 +64,23 @@ func (r *Registry) Load(cfg *config.Config) {
 	register("hdrezka", cfg.Providers.HDRezka, func() providers.Provider { return hdrezkamovie.New() }, "movies")
 	register("hdrezka_anime", cfg.Providers.HDRezka, func() providers.Provider { return hdrezka.New() }, "anime") // Special case for anime wrapper
 	register("comix", cfg.Providers.Comix, func() providers.Provider { return comix.New() }, "manga")
+
+	// Scan Dir and create the providers
+	luaDir := filepath.Join(config.GetConfigDir(), "luaProviders")
+	files, err := os.ReadDir(luaDir)
+	if err != nil {
+		fmt.Printf("Error reading luaProviders directory: %v\n", err)
+		return
+	}
+
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".lua" {
+
+			// Pre create the providers so we can access their contents to regsiter them
+			lp := luaprovider.New(filepath.Join(luaDir, file.Name()))
+			register(lp.Name(), cfg.Providers.Lua, func() providers.Provider { return lp }, string(lp.Type()))
+		}
+	}
 }
 
 func (r *Registry) Get(name string) (providers.Provider, error) {
