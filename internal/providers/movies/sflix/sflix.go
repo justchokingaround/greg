@@ -822,7 +822,7 @@ func (s *SFlix) extractSourcesFromServer(server types.EpisodeServer) (*types.Vid
 }
 
 // GetMovieEpisodeID retrieves the episode ID for a movie
-func (s *SFlix) GetMovieEpisodeID(mediaID string) (string, error) {
+func (s *SFlix) GetMovieEpisodeID(ctx context.Context, mediaID string) (string, error) {
 	info, err := s.GetInfo(mediaID)
 	if err != nil {
 		return "", err

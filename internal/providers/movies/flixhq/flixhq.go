@@ -780,3 +780,19 @@ func (f *FlixHQ) GetAvailableQualities(ctx context.Context, episodeID string) ([
 func (f *FlixHQ) HealthCheck(ctx context.Context) error {
 	return nil
 }
+
+// GetMovieEpisodeID retrieves the episode ID for a movie
+func (f *FlixHQ) GetMovieEpisodeID(ctx context.Context, mediaID string) (string, error) {
+	info, err := f.GetInfo(mediaID)
+	if err != nil {
+		return "", err
+	}
+	movieInfo, ok := info.(*types.MovieInfo)
+	if !ok {
+		return "", fmt.Errorf("invalid info type")
+	}
+	if len(movieInfo.Episodes) > 0 {
+		return movieInfo.Episodes[0].ID, nil
+	}
+	return "", fmt.Errorf("no episodes found for movie %s", mediaID)
+}
