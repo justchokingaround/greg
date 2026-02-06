@@ -77,7 +77,7 @@ greg
 # Authenticate with AniList (for anime tracking)
 greg auth anilist
 #+END_SRC
-
+/Note:/ /greg/ must remain running for =greg auth anilist= to work
 *** Basic Usage
 
 #+BEGIN_SRC bash
