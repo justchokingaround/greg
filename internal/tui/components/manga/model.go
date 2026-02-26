@@ -580,23 +580,54 @@ func (m *Model) renderPage() tea.Cmd {
 
 	return func() tea.Msg {
 		// Create a temp file
-		tmpFile, err := os.CreateTemp("", "greg-manga-*.jpg")
+		tmpFile, err := os.CreateTemp("", "greg-manga-*.png")
 		if err != nil {
 			return PageRenderedMsg{Err: fmt.Errorf("failed to create temp file: %w", err)}
 		}
-		defer func() { _ = os.Remove(tmpFile.Name()) }()
+		tmpFileName := tmpFile.Name()
+		defer func() { _ = os.Remove(tmpFileName) }()
 
 		// Download the image
-		resp, err := http.Get(url)
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return PageRenderedMsg{Err: fmt.Errorf("failed to create request: %w", err)}
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		req.Header.Set("Accept", "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+		req.Header.Set("Referer", "https://comix.to/")
+
+		resp, err := client.Do(req)
 		if err != nil {
 			return PageRenderedMsg{Err: fmt.Errorf("failed to download image: %w", err)}
 		}
 		defer func() { _ = resp.Body.Close() }()
 
-		_, err = io.Copy(tmpFile, resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			return PageRenderedMsg{Err: fmt.Errorf("image download returned status %d", resp.StatusCode)}
+		}
+
+		downloadFile, err := os.CreateTemp("", "greg-manga-download-*.img")
+		if err != nil {
+			return PageRenderedMsg{Err: fmt.Errorf("failed to create download temp file: %w", err)}
+		}
+		downloadFileName := downloadFile.Name()
+		defer func() { _ = os.Remove(downloadFileName) }()
+
+		_, err = io.Copy(downloadFile, resp.Body)
 		if err != nil {
 			return PageRenderedMsg{Err: fmt.Errorf("failed to save image: %w", err)}
 		}
+		_ = downloadFile.Close()
+
+		// Convert image to PNG if needed (WebP, AVIF, etc.)
+		convertCmd := exec.Command("magick", downloadFileName, tmpFileName)
+		if err := convertCmd.Run(); err != nil {
+			// If convert fails, try using the original file
+			tmpFileName = downloadFileName
+		}
+
 		_ = tmpFile.Close()
 
 		// Run chafa
@@ -621,7 +652,7 @@ func (m *Model) renderPage() tea.Cmd {
 		// "symbols" or others will use default (no -f flag or specific one if needed, but chafa defaults to symbols)
 
 		// Add file path
-		args = append(args, tmpFile.Name())
+		args = append(args, tmpFileName)
 
 		cmd := exec.Command("chafa", args...)
 		output, err := cmd.Output()

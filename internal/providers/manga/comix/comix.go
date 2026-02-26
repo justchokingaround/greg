@@ -192,7 +192,7 @@ func (c *Comix) GetInfo(id string) (interface{}, error) {
 		ChapterID       int         `json:"chapter_id"`
 		Number          interface{} `json:"number"`
 		Name            string      `json:"name"`
-		IsOfficial      int         `json:"is_official"`
+		IsOfficial      any         `json:"is_official"`
 		ScanlationGroup struct {
 			Name string `json:"name"`
 		} `json:"scanlation_group"`
@@ -219,7 +219,7 @@ func (c *Comix) GetInfo(id string) (interface{}, error) {
 					ChapterID       int         `json:"chapter_id"`
 					Number          interface{} `json:"number"`
 					Name            string      `json:"name"`
-					IsOfficial      int         `json:"is_official"`
+					IsOfficial      any         `json:"is_official"`
 					ScanlationGroup struct {
 						Name string `json:"name"`
 					} `json:"scanlation_group"`
@@ -248,18 +248,28 @@ func (c *Comix) GetInfo(id string) (interface{}, error) {
 		ChapterID       int
 		Number          interface{}
 		Name            string
-		IsOfficial      int
+		IsOfficial      bool
 		ScanlationGroup string
 	}
 	chapterMap := make(map[string][]ChapterItem)
 
 	for _, item := range allChapters {
+		isOfficial := false
+		switch v := item.IsOfficial.(type) {
+		case bool:
+			isOfficial = v
+		case float64:
+			isOfficial = v == 1
+		case int:
+			isOfficial = v == 1
+		}
+
 		numStr := fmt.Sprintf("%v", item.Number)
 		chapterMap[numStr] = append(chapterMap[numStr], ChapterItem{
 			ChapterID:       item.ChapterID,
 			Number:          item.Number,
 			Name:            item.Name,
-			IsOfficial:      item.IsOfficial,
+			IsOfficial:      isOfficial,
 			ScanlationGroup: item.ScanlationGroup.Name,
 		})
 	}
@@ -288,7 +298,7 @@ func (c *Comix) GetInfo(id string) (interface{}, error) {
 
 		// 1. Try Official
 		for _, item := range items {
-			if item.IsOfficial == 1 {
+			if item.IsOfficial {
 				selectedItem = item
 				found = true
 				break
