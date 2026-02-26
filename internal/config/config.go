@@ -61,6 +61,7 @@ type ProvidersConfig struct {
 	FlixHQ              ProviderSettings  `mapstructure:"flixhq" yaml:"flixhq"`
 	HDRezka             ProviderSettings  `mapstructure:"hdrezka" yaml:"hdrezka"`
 	Comix               ProviderSettings  `mapstructure:"comix" yaml:"comix"`
+	Lua                 ProviderSettings  `mapstructure:"lua" yaml:"lua"`
 }
 
 // DefaultProviders specifies default provider for each media type
@@ -275,7 +276,7 @@ func (c *Config) Save() error {
 
 	// Create directory if it doesn't exist
 	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create config directory %s: %w", configDir, err)
 	}
 
@@ -291,7 +292,7 @@ func (c *Config) Save() error {
 	}
 
 	// Write to file
-	if err := os.WriteFile(configPath, yamlData, 0644); err != nil {
+	if err := os.WriteFile(configPath, yamlData, 0o644); err != nil {
 		return fmt.Errorf("failed to write config to %s: %w", configPath, err)
 	}
 
@@ -344,6 +345,10 @@ func setDefaults(v *viper.Viper) {
 	// Comix defaults (API-based)
 	v.SetDefault("providers.comix.enabled", true)
 	v.SetDefault("providers.comix.mode", "local")
+
+	// Lua defaults (Local)
+	v.SetDefault("providers.lua.enabled", true)
+	v.SetDefault("providers.lua.mode", "local")
 
 	// Tracker defaults
 	v.SetDefault("tracker.anilist.enabled", true)
@@ -542,7 +547,7 @@ func InitializeDirs() error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
