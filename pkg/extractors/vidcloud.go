@@ -26,8 +26,17 @@ func NewVidCloudExtractor() *VidCloudExtractor {
 	}
 }
 
-// Extract extracts video sources from VidCloud/UpCloud/AkCloud URLs using decrypt.broggl.farm
+// Extract extracts video sources from VidCloud/UpCloud/AkCloud URLs using decrypt.broggl.farm or https://dec.eatmynerd.live
 func (v *VidCloudExtractor) Extract(sourceURL string) (*types.VideoSources, error) {
+	// Checks if decrypter is up before using, falling back to alternate decrypter
+	decrypter := "https://decrypt.broggl.farm/"
+	_, err := v.Client.Head(decrypter)
+	if err != nil {
+		decrypter = "https://dec.eatmynerd.live/"
+		_, err := v.Client.Head(decrypter)
+		return nil, fmt.Errorf("failed to reach both decrypters: %w", err)
+	}
+
 	// Extract referer from sourceURL
 	parsedURL, err := url.Parse(sourceURL)
 	referer := ""
@@ -36,7 +45,7 @@ func (v *VidCloudExtractor) Extract(sourceURL string) (*types.VideoSources, erro
 	}
 
 	// Construct the decrypt.broggl.farm URL
-	decURL := fmt.Sprintf("https://decrypt.broggl.farm/?url=%s", url.QueryEscape(sourceURL))
+	decURL := fmt.Sprintf("%s?url=%s", decrypter, url.QueryEscape(sourceURL))
 
 	// Make request to decrypt.broggl.farm
 	req, err := http.NewRequest("GET", decURL, nil)
@@ -49,12 +58,12 @@ func (v *VidCloudExtractor) Extract(sourceURL string) (*types.VideoSources, erro
 
 	resp, err := v.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed fetching from decrypt.broggl.farm: %w", err)
+		return nil, fmt.Errorf("failed fetching from %s: %w", decrypter, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("decrypt.broggl.farm returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("%s returned status %d", decrypter, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -107,7 +116,7 @@ func (v *VidCloudExtractor) Extract(sourceURL string) (*types.VideoSources, erro
 	}
 
 	if len(videoSources) == 0 {
-		return nil, fmt.Errorf("no video sources found in decrypt.broggl.farm response")
+		return nil, fmt.Errorf("no video sources found in %s", decrypter)
 	}
 
 	return &types.VideoSources{
